@@ -274,3 +274,7 @@ TSWLatexianTemp*
 
 # Makeindex log files
 *.lpz
+
+# Code::Blocks Project File
+*.cbp
+*.depend

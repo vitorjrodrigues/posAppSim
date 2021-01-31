@@ -1,0 +1,10 @@
+{
+    "terminal": {
+        "identificacao": "TERM0001",
+        "endereco": "Av. Ruy Carneiro, 300. Miramar.",
+        "cnpj": "21505538000128",
+        "razaoSocial": "Phoebus Tecnologia",
+        "rodapeVenda": "A Phoebus é uma empresa que atua no mercado de meios de pagamentos há 18 anos. Ela é pioneira na criação do primeiro sistema de pagamento de contas utilizando terminais POS",
+        "rodapeEstorno": ""
+    }
+}

@@ -1,0 +1,25 @@
+{
+    "produtos": {
+        "Credito 1": {
+            "id": "01",
+            "tipo": 1,
+            "rotulo": "CREDITO A VISTA",
+            "vMin": 10.00,
+            "vMax": 10000.00
+        },
+        "Credito 2": {
+            "id": "02",
+            "tipo": 2,
+            "rotulo": "CREDITO PARCELADO",
+            "vMin": 100.00,
+            "vMax": 10000.00
+        },
+        "Debito 1": {
+            "id": "03",
+            "tipo": 3,
+            "rotulo": "DEBITO",
+            "vMin": 0.00,
+            "vMax": 0.00
+        }
+    }
+}

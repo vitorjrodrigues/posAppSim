@@ -34,6 +34,7 @@ void delay(int milissegundos);
 void wclrscr(WINDOW* win);
 int supports_full_hd(const char * const monitor);
 c_terminal readConfTerminal(const char *str);
+void printReport(time_t time_ref);
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
   if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
@@ -51,7 +52,9 @@ int main()
     int key;            //Input de Usuário nas seleções de Menu
     time_t tm;          //Variável para receber o valor de Tempo no formato time_t
     struct tm ts;       //Struct para separar os elementos do valor de tempo (Dia, Mês, Hora, etc.)
+    //char sbuf[30];      //Array para receber a timestamp por extenso, sem caracteres especiais
     char tbuf[30];      //Array para receber os valores de tempo formatados da maneira desejada
+    //char tbuf2[30];      //Array para receber a timestamp por extenso, sem caracteres especiais
 
     /* Variáveis para parsing de JSON */
     c_terminal cfTerminal;
@@ -86,7 +89,8 @@ BEGIN:
 
         tm = time(NULL);
         ts = *localtime(&tm);
-        strftime(tbuf, sizeof(tbuf), "%d/%m %H:%M", &ts);
+        strftime(tbuf, sizeof(tbuf), "%d/%m %I:%M", &ts);
+        //strftime(tbuf2, sizeof(tbuf2), "%Y%m%d%H%M%s", &ts);
 
         /* Menu Principal */
         wprintw(term, "%c%c%c%c%c%c%c%c  %s",  cfTerminal.identificacao[0],
@@ -172,8 +176,14 @@ BEGIN:
                                         wmove(term,2,0);
                                         wprintw(term, "    IMPRIMINDO...    ");
                                         wrefresh(term);
-                                        delay(2000); //FUNCAO DE IMPRESSAO
+                                        /* Interrompe o modo TUI para utilizar o FILE-C */
+                                        endwin();
+                                        /* Função de Impressão de relatório */
+                                        printReport(tm);  //FUNCAO DE IMPRESSAO
+                                        /* Retoma o modo TUI de onde parou */
+                                        reset_prog_mode();
                                         wmove(term,2,0);
+                                        wrefresh(term);
                                         wprintw(term, "    IMPRESSAO        ");
                                         wprintw(term, "        CONCLUIDA    ");
                                         wrefresh(term);
@@ -433,4 +443,22 @@ c_terminal readConfTerminal(const char *str)
         }
     }
     return rett;
+}
+
+void printReport(time_t time_ref)
+{
+    FILE * fp;
+    int i;
+    /* open the file for writing*/
+    char buf[32];
+    clock_t t1 = clock();
+    time_t t = time(NULL);
+    sprintf(buf, "./reports/report%lu.txt", t);
+    fp = fopen (buf,"w");
+
+    /* write 10 lines of text into the file stream*/
+    for(i = 0; i < 10;i++){
+            fprintf (fp, "%s\n",buf);
+        }
+    fclose (fp);
 }

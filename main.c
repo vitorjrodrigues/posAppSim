@@ -10,7 +10,7 @@ typedef struct {
    char middle;
    char minor;
 } version;
-version v = {0, 3, 2};
+version v = {0, 3, 4};
 
 typedef struct {
     char   identificacao[9];
@@ -45,37 +45,94 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 
 int main()
 {
-    //Variáveis Iniciais
+    /* Variáveis Iniciais */
     uint8_t nlines = 7; //Número de Linhas no Terminal Simulado
     uint8_t ncols = 21; //Número de Colunas no Terminal Simulado
     int op;             //Input de Usuário no Menu Principal
     int op2;            //Input de Usuário no Menu Secundário
 
-    //Variáveis para terminal.json
+    /* Variáveis para parsing de JSON */
     c_terminal cfTerminal;
+    c_produto  cfProduto;
 
-    //Variáveis para produtos.json
-    c_produto cfProduto;
-
+    /* Carregando Configurações do Terminal salvas em 'terminal.json' */
     cfTerminal = readConfTerminal("terminal.json");
 
-    /*initscr(); //Inicia a TUI
+    /* Configurações iniciais do Terminal */
+    initscr(); //Inicia a TUI
     noecho();  //Desativa retorno na tela dos caracteres inseridos pelo usuário
+
+    /* Tela Inicial do Simulador */
     printw("POS App Sim v%d.%d.%d\nAperte ENTER p/ cont.", v.major, v.middle, v.minor);
-    getch();
+    getch(); //Aguarda inserção de tecla do usuário para iniciar
     refresh();
 
+    /* Cria janela do terminal simulado */
     WINDOW * term = newwin(nlines, ncols, 0, 0);
-    keypad(term, TRUE);
     start_color();
-    //wattron(term, COLOR_PAIR(2));
+    init_pair(1, COLOR_BLACK, COLOR_YELLOW);
+    wbkgd(term, COLOR_PAIR(1));
+    keypad(term, TRUE);
     wmove(term,0,0);
+    //start_color();
+
+    /* Loop do Simulador */
     while(1)
     {
         werase(term);
-        wprintw(term, "Menu Principal\nSelecione a Operacao:\n   1 - Venda\n   2 - Administrativa");
+
+        // Menu Principal
+        time_t tm;
+        tm = time(NULL);
+        struct tm ts;
+        char tbuf[30];
+        ts = *localtime(&tm);
+        strftime(tbuf, sizeof(tbuf), "%d/%m %H:%M", &ts);
+
+        wprintw(term, "%c%c%c%c%c%c%c%c  %s",  cfTerminal.identificacao[0],
+                                                                cfTerminal.identificacao[1],
+                                                                cfTerminal.identificacao[2],
+                                                                cfTerminal.identificacao[3],
+                                                                cfTerminal.identificacao[4],
+                                                                cfTerminal.identificacao[5],
+                                                                cfTerminal.identificacao[6],
+                                                                cfTerminal.identificacao[7],
+                                                                tbuf);
+        if(strlen(cfTerminal.razaoSocial)<=21)
+        {
+            int c = (22-strlen(cfTerminal.razaoSocial))/2;
+            wmove(term, 1, c);
+            wprintw(term, "%s", cfTerminal.razaoSocial);
+        }
+        else
+        {
+            wprintw(term, "%.*s", 21, cfTerminal.razaoSocial);
+        }
+
+        wprintw(term, "\n     Tecle ENTER\n     para vender\n\n1-ESTORNO     2-RELAT");
+        //wmove(term, nlines - 1,0);
+        //wprintw(term,)
+        //Menu Principal\nSelecione a Operacao:\n   1 - Venda\n   2 - Administrativa");
         wrefresh(term);
         while(1)
+        {
+            int k = wgetch(term);
+            wmove(term,2,0);
+            wprintw(term, "%d",k);
+            wrefresh(term);
+        }
+
+        wgetch(term);
+        wrefresh(term);
+        /* Tabela de Caracteres Utilizáveis
+         * ENTER - 10   '0' - 48    '1' - 49     '2' - 50
+         *   '3' - 51   '4' - 52    '5' - 53     '6' - 54
+         *   '7' - 55   '8' - 56    '9' - 57    BKSP - 88
+
+
+
+
+        /*while(1)
         {
             op = wgetch(term);
             wmove(term, 5, 0);
@@ -231,12 +288,13 @@ int main()
         //wrefresh(term);
         getch();
         wrefresh(term);
-        delay(2000);
+        delay(2000);*/
     }
 
-    wclrscr(term);
+    //wclrscr(term);
+    endwin();
 
-    endwin();*/
+    //return 0;
     printf("THIS IS A TEST!");
     //cJSON *monitor = NULL;
     //int k = supports_full_hd(monitor);
@@ -287,27 +345,27 @@ c_terminal readConfTerminal(const char *str)
     for (i = 1; i < r; i++) {
         if (jsoneq(JSON_STRING, &t[i], "identificacao") == 0) {
             strncpy(&rett.identificacao, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            printf("- Identificação: %s\n", rett.identificacao);
+            //printf("- Identificação: %s\n", rett.identificacao);
             i++;
         } else if (jsoneq(JSON_STRING, &t[i], "endereco") == 0) {
             strncpy(&rett.endereco, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            printf("- Endereço: %s\n", rett.endereco);
+            //printf("- Endereço: %s\n", rett.endereco);
             i++;
         } else if (jsoneq(JSON_STRING, &t[i], "cnpj") == 0) {
             strncpy(&rett.cnpj, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            printf("- CNPJ: %s\n", rett.cnpj);
+            //printf("- CNPJ: %s\n", rett.cnpj);
             i++;
         } else if (jsoneq(JSON_STRING, &t[i], "razaoSocial") == 0) {
             strncpy(&rett.razaoSocial, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            printf("- Razão Social: %s\n", rett.razaoSocial);
+            //printf("- Razão Social: %s\n", rett.razaoSocial);
             i++;
         } else if (jsoneq(JSON_STRING, &t[i], "rodapeVenda") == 0) {
             strncpy(&rett.rodapeVenda, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            printf("- Rodapé Venda: %s\n", rett.rodapeVenda);
+            //printf("- Rodapé Venda: %s\n", rett.rodapeVenda);
             i++;
         } else if (jsoneq(JSON_STRING, &t[i], "rodapeEstorno") == 0) {
             strncpy(&rett.rodapeEstorno, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            printf("- Rodapé Estorno: %s\n", rett.rodapeEstorno);
+            //printf("- Rodapé Estorno: %s\n", rett.rodapeEstorno);
             i++;
         } else {
           //printf("Unexpected key: %.*s\n", t[i].end - t[i].start, JSON_STRING + t[i].start);

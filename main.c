@@ -48,8 +48,10 @@ int main()
     /* Variáveis Iniciais */
     uint8_t nlines = 7; //Número de Linhas no Terminal Simulado
     uint8_t ncols = 21; //Número de Colunas no Terminal Simulado
-    int op;             //Input de Usuário no Menu Principal
-    int op2;            //Input de Usuário no Menu Secundário
+    int key;            //Input de Usuário nas seleções de Menu
+    time_t tm;          //Variável para receber o valor de Tempo no formato time_t
+    struct tm ts;       //Struct para separar os elementos do valor de tempo (Dia, Mês, Hora, etc.)
+    char tbuf[30];      //Array para receber os valores de tempo formatados da maneira desejada
 
     /* Variáveis para parsing de JSON */
     c_terminal cfTerminal;
@@ -79,16 +81,14 @@ int main()
     /* Loop do Simulador */
     while(1)
     {
+BEGIN:
         werase(term);
 
-        // Menu Principal
-        time_t tm;
         tm = time(NULL);
-        struct tm ts;
-        char tbuf[30];
         ts = *localtime(&tm);
         strftime(tbuf, sizeof(tbuf), "%d/%m %H:%M", &ts);
 
+        /* Menu Principal */
         wprintw(term, "%c%c%c%c%c%c%c%c  %s",  cfTerminal.identificacao[0],
                                                                 cfTerminal.identificacao[1],
                                                                 cfTerminal.identificacao[2],
@@ -110,27 +110,89 @@ int main()
         }
 
         wprintw(term, "\n     Tecle ENTER\n     para vender\n\n1-ESTORNO     2-RELAT");
-        //wmove(term, nlines - 1,0);
-        //wprintw(term,)
-        //Menu Principal\nSelecione a Operacao:\n   1 - Venda\n   2 - Administrativa");
         wrefresh(term);
+
+        /*       Tabela de Caracteres Utilizáveis         *
+         * ENTER - 10   '0' - 48    '1' - 49     '2' - 50 *
+         *   '3' - 51   '4' - 52    '5' - 53     '6' - 54 *
+         *   '7' - 55   '8' - 56    '9' - 57    BKSP - 08 */
+
+        /* Máquina de Estados do Menu 1 */
         while(1)
         {
-            int k = wgetch(term);
-            wmove(term,2,0);
-            wprintw(term, "%d",k);
+            key = wgetch(term);
             wrefresh(term);
+            delay(100);
+
+            if(key == 10 || key == 8 || (key > 47 && key < 58)) //Limita entrada somente aos caracteres válidos
+            {
+                wclrscr(term);
+
+                switch(key)
+                {
+                    case 10:
+                        wprintw(term, "   ESCOLHA A VENDA   ");
+                        wprintw(term, "1-CREDITO A VISTA    ");
+                        wprintw(term, "2-CREDITO PARCELADO  ");
+                        wprintw(term, "3-DEBITO             ");
+                        break;
+                    case 49:
+                        wprintw(term, "       ESTORNO       ");
+                        wprintw(term, "1-HH/mm R$ 999.999,99");
+                        wprintw(term, "2-HH/mm R$ 999.999,99");
+                        wprintw(term, "3-HH/mm R$ 999.999,99");
+                        wprintw(term, "4-HH/mm R$ 999.999,99");
+                        wprintw(term, "5-HH/mm R$ 999.999,99");
+                        break;
+                    case 50:
+                        wprintw(term, "      RELATORIO      ");
+                        wprintw(term, "                     ");
+                        wprintw(term, "     Tecle ENTER     ");
+                        wprintw(term, "    para imprimir    ");
+                        wprintw(term, "\n\n");
+                        wprintw(term, "<-VOLTAR             ");
+
+                        //Máquina de Estados do Menu Relatório
+                        while(1)
+                        {
+                            key = wgetch(term);
+                            wrefresh(term);
+                            delay(100);
+
+                            if(key == 10 || key == 8 || (key > 47 && key < 58)) //Limita entrada somente aos caracteres válidos
+                            {
+                                switch(key)
+                                {
+                                    case 8:
+                                        goto BEGIN;
+                                        break;
+                                    case 10:
+                                        wmove(term,2,0);
+                                        wprintw(term, "                                          ");
+                                        wmove(term,2,0);
+                                        wprintw(term, "    IMPRIMINDO...    ");
+                                        wrefresh(term);
+                                        delay(2000); //FUNCAO DE IMPRESSAO
+                                        wmove(term,2,0);
+                                        wprintw(term, "    IMPRESSAO        ");
+                                        wprintw(term, "        CONCLUIDA    ");
+                                        wrefresh(term);
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                            }
+                        }
+                        break;
+                    case 8:
+                        goto BEGIN;
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
-
-        wgetch(term);
-        wrefresh(term);
-        /* Tabela de Caracteres Utilizáveis
-         * ENTER - 10   '0' - 48    '1' - 49     '2' - 50
-         *   '3' - 51   '4' - 52    '5' - 53     '6' - 54
-         *   '7' - 55   '8' - 56    '9' - 57    BKSP - 88
-
-
-
 
         /*while(1)
         {
@@ -285,7 +347,6 @@ int main()
 
             }
         }
-        //wrefresh(term);
         getch();
         wrefresh(term);
         delay(2000);*/

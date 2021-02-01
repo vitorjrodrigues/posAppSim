@@ -22,10 +22,10 @@ typedef struct {
 } c_terminal;
 
 typedef struct {
-    char   nome[32];
-    char   id[2];
+    char   nome[21];
+    char   id[4];
     int    tipo;
-    char   rotulo[32];
+    char   rotulo[21];
     float  vMin;
     float  vMax;
 } c_produto;
@@ -35,6 +35,8 @@ void wclrscr(WINDOW* win);
 int supports_full_hd(const char * const monitor);
 c_terminal readConfTerminal(const char *str);
 void printReport(time_t time_ref);
+c_produto readLstProduto(const char *str, int i);
+const char * formatMoney(const char *money);
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
   if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
@@ -52,16 +54,34 @@ int main()
     int key;            //Input de Usuário nas seleções de Menu
     time_t tm;          //Variável para receber o valor de Tempo no formato time_t
     struct tm ts;       //Struct para separar os elementos do valor de tempo (Dia, Mês, Hora, etc.)
-    //char sbuf[30];      //Array para receber a timestamp por extenso, sem caracteres especiais
     char tbuf[30];      //Array para receber os valores de tempo formatados da maneira desejada
-    //char tbuf2[30];      //Array para receber a timestamp por extenso, sem caracteres especiais
+
+    /* Valores de Venda */
+    double valor_da_venda;
+    int    parcelas;
+    char   svalor_da_venda[16] = {0};
+    char   cartao[20] = {0};
+    char   sparcelas[21] = {0};
+    int    parc;
+    int    debt;
+
+    /* Variáveis para seleção do Produto */
+    int    prod_id;
+
 
     /* Variáveis para parsing de JSON */
-    c_terminal cfTerminal;
-    c_produto  cfProduto;
+    c_terminal cfTerminal = {0};
+    c_produto  lstProduto[5];
+    int nprodutos = 3;
 
     /* Carregando Configurações do Terminal salvas em 'terminal.json' */
     cfTerminal = readConfTerminal("terminal.json");
+
+    /* Carregando Configurações dos Produtos salvas em 'produtos.json' */
+    for (int x = 0; x < nprodutos; x++)
+    {
+        lstProduto[x] = readLstProduto("produtos.json", x*12);
+    }
 
     /* Configurações iniciais do Terminal */
     initscr(); //Inicia a TUI
@@ -86,6 +106,10 @@ int main()
     {
 BEGIN:
         werase(term);
+
+        memset(cartao, 0, sizeof cartao);
+        memset(svalor_da_venda, 0, sizeof svalor_da_venda);
+        memset(sparcelas, 0, sizeof sparcelas);
 
         tm = time(NULL);
         ts = *localtime(&tm);
@@ -113,7 +137,9 @@ BEGIN:
             wprintw(term, "%.*s", 21, cfTerminal.razaoSocial);
         }
 
-        wprintw(term, "\n     Tecle ENTER\n     para vender\n\n1-ESTORNO     2-RELAT");
+        wmove(term, 3,0);
+        wprintw(term, "     Tecle ENTER\n     para vender\n\n1-ESTORNO     2-RELAT");
+        wmove(term,6,10);
         wrefresh(term);
 
         /*       Tabela de Caracteres Utilizáveis         *
@@ -135,10 +161,328 @@ BEGIN:
                 switch(key)
                 {
                     case 10:
+                        parc = 0;
                         wprintw(term, "   ESCOLHA A VENDA   ");
                         wprintw(term, "1-CREDITO A VISTA    ");
                         wprintw(term, "2-CREDITO PARCELADO  ");
                         wprintw(term, "3-DEBITO             ");
+                        wmove(term, 6, 0);
+
+                        //Máquina de Estados do Menu Vendas
+                        while(1)
+                        {
+                            key = wgetch(term);
+                            wrefresh(term);
+                            delay(100);
+
+                            if(key == 10 || key == 8 || (key > 47 && key < 58)) //Limita entrada somente aos caracteres válidos
+                            {
+                                switch(key)
+                                {
+                                    case 8:
+                                        goto BEGIN;
+                                        break;
+                                    case 49:
+                                        wmove(term,1,21);
+                                        parc = 0;
+                                        debt = 0;
+                                        prod_id = 1;
+                                        goto VENDA1;
+                                        break;
+                                    case 50:
+                                        wmove(term,2,21);
+                                        parc = 1;
+                                        debt = 0;
+                                        prod_id = 2;
+                                        goto VENDA1;
+                                        break;
+                                    case 51:
+                                        wmove(term,3,21);
+                                        parc = 0;
+                                        debt = 1;
+                                        prod_id = 3;
+                                        goto VENDA1;
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                            }
+                        }
+
+ VENDA1:
+                        /* Valor da Venda */
+                        wclrscr(term);
+                        wprintw(term, " <ROTULO DO PRODUTO> ");
+                        wmove(term, 2, 0);
+                        wprintw(term, "           VALOR (R$)");
+                        wmove(term, 4, 0);
+                        wrefresh(term);
+
+                        int idx = 0;
+
+                        while(1)
+                        {
+                            int q = wgetch(term);
+                            wrefresh(term);
+
+                            if(idx < 10)
+                            {
+                                if(q < 58 && q > 47)
+                                {
+                                    svalor_da_venda[idx] = q;
+                                    wmove(term, 4, 0);
+                                    valor_da_venda = strtol(svalor_da_venda,NULL,10);
+                                    wprintw(term, "%.2f", valor_da_venda/100);
+                                    idx++;
+                                }
+                            }
+
+                            if (q == 10)
+                            {
+                                //wprintw(term, "%.2f %.2f",lstProduto[prod_id - 1].vMin,lstProduto[prod_id - 1].vMax);
+                                //wrefresh(term);
+                                //delay(2000);
+                                if(!(lstProduto[prod_id - 1].vMax == 0 || lstProduto[prod_id - 1].vMax == 0))
+                                {
+                                    if(valor_da_venda/100 < lstProduto[prod_id - 1].vMin)
+                                    {
+                                        wclrscr(term);
+                                        memset(svalor_da_venda, 0, sizeof svalor_da_venda);
+                                        valor_da_venda = 0;
+                                        idx = 0;
+                                        wmove(term,1,0);
+                                        wprintw(term, "        ERRO:        ");
+                                        wmove(term,3,0);
+                                        wprintw(term, "  VALOR MENOR QUE O  ");
+                                        wprintw(term, "      MINIMO DE      ");
+                                        char zbuf[16];
+                                        sprintf(zbuf, "%.f", lstProduto[prod_id -1].vMin);
+                                        int l = (15 - strlen(zbuf))/2;
+                                        wmove(term, 5, l);
+                                        wprintw(term, "R$ %.2f  ", lstProduto[prod_id -1].vMin);
+                                        wrefresh(term);
+                                        wgetch(term);
+                                        wrefresh(term);
+                                        goto VENDA1;
+                                    }
+
+                                    /*else if(valor_da_venda/100 > lstProduto[prod_id - 1].vMax)
+                                    {
+                                        wclrscr(term);
+                                        memset(svalor_da_venda, 0, sizeof svalor_da_venda);
+                                        valor_da_venda = 0;
+                                        idx = 0;
+                                        wmove(term,1,0);
+                                        wprintw(term, "        ERRO:        ");
+                                        wmove(term,3,0);
+                                        wprintw(term, "  VALOR MAIOR QUE O  ");
+                                        wprintw(term, "      MAXIMO DE      ");
+                                        char zbuf[16];
+                                        sprintf(zbuf, "%.f", lstProduto[prod_id -1].vMax);
+                                        int l = (15 - strlen(zbuf))/2;
+                                        wmove(term, 5, l);
+                                        wprintw(term, "R$ %.2f  ", lstProduto[prod_id -1].vMax);
+                                        wrefresh(term);
+                                        wgetch(term);
+                                        wrefresh(term);
+                                        goto VENDA1;
+                                    }*/
+                                }
+                                if(parc == 0)
+                                {
+                                    goto CARD;
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                            else if(q == 8)
+                            {
+                                goto BEGIN;
+                            }
+                        }
+
+VENDA2:
+                        /* Número de Parcelas */
+                        wclrscr(term);
+                        wprintw(term, " <ROTULO DO PRODUTO> ");
+                        wmove(term, 2, 0);
+                        wprintw(term, "             PARCELAS");
+                        wmove(term, 4, 0);
+                        wrefresh(term);
+
+                        idx = 0;
+
+                        while(1)
+                        {
+                            int q = wgetch(term);
+                            wrefresh(term);
+                            if(q < 58 && q > 47)
+                            {
+                                sparcelas[idx] = q;
+                                sparcelas[idx+1] = 'x';
+                                wmove(term, 4, 0);
+                                wprintw(term, "%s", sparcelas);
+                                idx++;
+                            }
+                            else if(q == 10)
+                            {
+                                if(strlen(sparcelas)!=0)
+                                {
+                                    if(strcmp(sparcelas, "0x"))
+                                    {
+                                       break;
+                                    }
+                                    else
+                                    {
+                                       wclrscr(term);
+                                       memset(sparcelas, 0, sizeof sparcelas);
+                                       idx = 0;
+                                       wmove(term,1,0);
+                                       wprintw(term, "        ERRO:        ");
+                                       wmove(term,3,0);
+                                       wprintw(term, "   NUMERO INCORRETO  ");
+                                       wprintw(term, "     DE PARCELAS     ");
+                                       wrefresh(term);
+                                       wgetch(term);
+                                       wrefresh(term);
+                                       goto VENDA2;
+                                    }
+
+                                }
+
+                            }
+                            else if(q == 8)
+                            {
+                                goto BEGIN;
+                            }
+                        }
+
+ CARD:
+                        /* Número do Cartão */
+                        wclrscr(term);
+                        wprintw(term, " <ROTULO DO PRODUTO> ");
+                        wmove(term, 2, 0);
+                        wprintw(term, "               CARTAO");
+                        wmove(term, 4, 0);
+                        wrefresh(term);
+
+                        idx = 0;
+
+                        while(1)
+                        {
+                            int q = wgetch(term);
+                            wrefresh(term);
+
+                            if(idx < 19)
+                            {
+                                if(q < 58 && q > 47)
+                                {
+                                    cartao[idx] = q;
+                                    wmove(term, 4, 0);
+                                    wprintw(term, "%s", cartao);
+                                    idx++;
+                                }
+                            }
+                            if(q == 10)
+                            {
+                                if(strlen(cartao)<11)
+                                {
+                                      wclrscr(term);
+                                      memset(sparcelas, 0, sizeof sparcelas);
+                                      idx = 0;
+                                      wmove(term,1,0);
+                                      wprintw(term, "        ERRO:        ");
+                                      wmove(term,3,0);
+                                      wprintw(term, "   CARTAO INVALIDO   ");
+                                      wrefresh(term);
+                                      wgetch(term);
+                                      wrefresh(term);
+                                      goto CARD;
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                            else if(q == 8)
+                            {
+                                goto BEGIN;
+                            }
+
+                        }
+
+CVEND:
+                        /*Confirmação de Venda */
+                        wclrscr(term);
+                        wprintw(term, " <ROTULO DO PRODUTO> ");
+                        wprintw(term, "   Confirma Venda?   ");
+                        int w = (21 - strlen(cartao))/2;
+                        wmove(term, 3, w);
+                        wprintw(term, "%c%c%c%c", cartao[0],
+                                                  cartao[1],
+                                                  cartao[2],
+                                                  cartao[3]);
+                        int e = strlen(cartao) - 8;
+                        for(int p = 0; p < e; p++)
+                        {
+                            waddch(term, '*');
+                        }
+                        wprintw(term, "%c%c%c%c", cartao[strlen(cartao)-4],
+                                                  cartao[strlen(cartao)-3],
+                                                  cartao[strlen(cartao)-2],
+                                                  cartao[strlen(cartao)-1]);
+                        wmove(term,4,0);
+                        wprintw(term,"R$");
+                        int z = 17 - strlen(svalor_da_venda);
+                        wmove(term, 4, z);
+                        wprintw(term,"%.2f", valor_da_venda/100);
+                        wmove(term,6,0);
+                        wprintw(term, "NAO               SIM");
+                        wmove(term,6,10);
+                        wrefresh(term);
+                        while(1)
+                        {
+                            int q = wgetch(term);
+                            wrefresh(term);
+                            if (q == 10)
+                            {
+                                break;
+                            }
+                            else if(q == 8)
+                            {
+                                wclrscr(term);
+                                memset(sparcelas, 0, sizeof sparcelas);
+                                idx = 0;
+                                wmove(term,1,0);
+                                wprintw(term, "        ERRO:        ");
+                                wmove(term,3,0);
+                                wprintw(term, " OPERACAO CANCELADA  ");
+                                wrefresh(term);
+                                wgetch(term);
+                                wrefresh(term);
+                                goto BEGIN;
+                            }
+                        }
+
+                        /* Salvar Venda no Repositório de Vendas */
+
+                        //Função de Salvar Venda
+                        while(1)
+                        {
+                            wclrscr(term);
+                            memset(sparcelas, 0, sizeof sparcelas);
+                            idx = 0;
+                            wmove(term,3,0);
+                            wprintw(term, "   VENDA CONCLUIDA   ");
+                            wmove(term,6,10);
+                            wrefresh(term);
+                            delay(2000);
+                            goto BEGIN;
+                        }
+
                         break;
                     case 49:
                         wprintw(term, "       ESTORNO       ");
@@ -147,6 +491,67 @@ BEGIN:
                         wprintw(term, "3-HH/mm R$ 999.999,99");
                         wprintw(term, "4-HH/mm R$ 999.999,99");
                         wprintw(term, "5-HH/mm R$ 999.999,99");
+
+                        //Máquina de Estados do Menu Estorno
+                        while(1)
+                        {
+                            key = wgetch(term);
+                            wrefresh(term);
+                            delay(100);
+
+                            if(key == 10 || key == 8 || (key > 47 && key < 58)) //Limita entrada somente aos caracteres válidos
+                            {
+                                switch(key)
+                                {
+                                    case 8:
+                                        goto BEGIN;
+                                        break;
+                                    case 49:
+                                        wmove(term,1,21);
+                                        break;
+                                    case 50:
+                                        wmove(term,2,21);
+                                        break;
+                                    case 51:
+                                        wmove(term,3,21);
+                                        break;
+                                    case 52:
+                                        wmove(term,4,21);
+                                        break;
+                                    case 53:
+                                        wmove(term,5,21);
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                            }
+                        }
+
+                        /*Confirmação de Estorno */
+                        wclrscr(term);
+                        wprintw(term, " <ROTULO DO PRODUTO> ");
+                        wprintw(term, "  Confirma Estorno?  ");
+                        wmove(term, 3, 0);
+                        wprintw(term, "  1234********3456   ");
+                        wprintw(term, "RS   9.999.999.999,99");
+                        wmove(term,6,0);
+                        wprintw(term, "NAO               SIM");
+                        wmove(term,6,10);
+                        wrefresh(term);
+                        while(1)
+                        {
+                            int q = wgetch(term);
+                            wrefresh(term);
+                            if (q == 10)
+                            {
+                                //CONFIRMA
+                            }
+                            else if(q == 8)
+                            {
+                                goto BEGIN;
+                            }
+                        }
                         break;
                     case 50:
                         wprintw(term, "      RELATORIO      ");
@@ -203,174 +608,14 @@ BEGIN:
                 }
             }
         }
-
-        /*while(1)
-        {
-            op = wgetch(term);
-            wmove(term, 5, 0);
-            if(op == '1')
-            {
-                wprintw(term, "1 - Venda            ");
-                wrefresh(term);
-                delay(500);
-                break;
-            }
-            else if(op == '2')
-            {
-                wprintw(term, "2 - Administrativa   ");
-                wrefresh(term);
-                delay(500);
-                break;
-            }
-            else
-            {
-                wprintw(term, "ERRO: INVALIDO       ");
-                wrefresh(term);
-            }
-        }
-
-        wclrscr(term);
-
-        if(op == '1')
-        {
-            wprintw(term, "Menu Venda:\n1 - Credito a Vista\n2 - Credito Parcelado3 - Debito\n0 - Retornar");
-            wrefresh(term);
-            while(1)
-            {
-                wmove(term, 5, 0);
-                op2 = wgetch(term);
-                if(op2 == '1')
-                {
-                    wprintw(term, "1 - Credito a Vista  ");
-                    wrefresh(term);
-                    delay(500);
-                    break;
-                }
-                else if(op2 == '2')
-                {
-                    wprintw(term, "2 - Credito Parcelado");
-                    wrefresh(term);
-                    delay(500);
-                    break;
-                }
-                else if(op2 == '3')
-                {
-                    wprintw(term, "3 - Debito           ");
-                    wrefresh(term);
-                    delay(500);
-                    break;
-                }
-                else if(op2 == '0')
-                {
-                    wprintw(term, "0 - Retorno          ");
-                    wrefresh(term);
-                    delay(500);
-                    break;
-                }
-                else
-                {
-                    wprintw(term, "ERRO: INVALIDO       ");
-                    wrefresh(term);
-                }
-            }
-
-            wclrscr(term);
-
-            if (op2 == '1')
-            {
-                wprintw(term, "Credito a Vista      ");
-                wrefresh(term);
-                break;
-            }
-            else if(op2 == '2')
-            {
-                wprintw(term, "Credito Parcelado    ");
-                wrefresh(term);
-            }
-            else if(op2 == '3')
-            {
-                wprintw(term, "3 - Debito           ");
-                wrefresh(term);
-            }
-            else if(op2 == '0')
-            {
-                wprintw(term, "0 - Retorno          ");
-                wrefresh(term);
-            }
-
-        }
-        else if(op == '2')
-        {
-            wprintw(term, "Menu Administrativa: ");
-            wprintw(term, "1 - Estorno          ");
-            wprintw(term, "2 - Relatorio        ");
-            wprintw(term, "0 - Retorno          ");
-            wrefresh(term);
-            while(1)
-            {
-                wmove(term, 4, 0);
-                op2 = wgetch(term);
-                if(op2 == '1')
-                {
-                    wprintw(term, "1 - Estorno          ");
-                    wrefresh(term);
-                    delay(500);
-                    break;
-                }
-                else if(op2 == '2')
-                {
-                    wprintw(term, "2 - Relatorio        ");
-                    wrefresh(term);
-                    delay(500);
-                    break;
-                }
-                else if(op2 == '0')
-                {
-                    wprintw(term, "0 - Retorno          ");
-                    wrefresh(term);
-                    delay(500);
-                    break;
-                }
-                else
-                {
-                    wprintw(term, "ERRO: INVALIDO       ");
-                    wrefresh(term);
-                }
-            }
-
-            wclrscr(term);
-
-            if (op2 == '1')
-            {
-
-            }
-            else if(op2 == '2')
-            {
-
-            }
-            else if(op2 == '3')
-            {
-
-            }
-            else if(op2 == '0')
-            {
-
-            }
-        }
-        getch();
-        wrefresh(term);
-        delay(2000);*/
     }
 
     //wclrscr(term);
     endwin();
+    delscreen(term);
 
-    //return 0;
-    printf("THIS IS A TEST!");
-    //cJSON *monitor = NULL;
-    //int k = supports_full_hd(monitor);
-    //printf("\n>>>%d", k);
-    while(1);
+    //printf("THIS IS A TEST!");
+    //while(1);
     return 0;
 }
 
@@ -408,40 +653,19 @@ c_terminal readConfTerminal(const char *str)
     int i;
     int r = jsmn_parse(&p, JSON_STRING, strlen(JSON_STRING), t, 128);
 
-    if (r < 1 || t[0].type != JSMN_OBJECT) {
-        printf("Object expected\n");
-    }
+    strncpy(&rett.identificacao, JSON_STRING + t[4].start, t[4].end - t[4].start);
+    //printf("- Identificação: %s\n", rett.identificacao);
+    strncpy(&rett.endereco, JSON_STRING + t[6].start, t[6].end - t[6].start);
+    //printf("- Endereço: %s\n", rett.endereco);
+    strncpy(&rett.cnpj, JSON_STRING + t[8].start, t[8].end - t[8].start);
+    //printf("- CNPJ: %s\n", rett.cnpj);
+    strncpy(&rett.razaoSocial, JSON_STRING + t[10].start, t[10].end - t[10].start);
+    //printf("- Razão Social: %s\n", rett.razaoSocial);
+    strncpy(&rett.rodapeVenda, JSON_STRING + t[12].start, t[12].end - t[12].start);
+    //printf("- Rodapé Venda: %s\n", rett.rodapeVenda);
+    strncpy(&rett.rodapeEstorno, JSON_STRING + t[14].start, t[14].end - t[14].start);
+    //printf("- Rodapé Estorno: %s\n", rett.rodapeEstorno);
 
-    /* Loop over all keys of the root object */
-    for (i = 1; i < r; i++) {
-        if (jsoneq(JSON_STRING, &t[i], "identificacao") == 0) {
-            strncpy(&rett.identificacao, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            //printf("- Identificação: %s\n", rett.identificacao);
-            i++;
-        } else if (jsoneq(JSON_STRING, &t[i], "endereco") == 0) {
-            strncpy(&rett.endereco, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            //printf("- Endereço: %s\n", rett.endereco);
-            i++;
-        } else if (jsoneq(JSON_STRING, &t[i], "cnpj") == 0) {
-            strncpy(&rett.cnpj, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            //printf("- CNPJ: %s\n", rett.cnpj);
-            i++;
-        } else if (jsoneq(JSON_STRING, &t[i], "razaoSocial") == 0) {
-            strncpy(&rett.razaoSocial, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            //printf("- Razão Social: %s\n", rett.razaoSocial);
-            i++;
-        } else if (jsoneq(JSON_STRING, &t[i], "rodapeVenda") == 0) {
-            strncpy(&rett.rodapeVenda, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            //printf("- Rodapé Venda: %s\n", rett.rodapeVenda);
-            i++;
-        } else if (jsoneq(JSON_STRING, &t[i], "rodapeEstorno") == 0) {
-            strncpy(&rett.rodapeEstorno, JSON_STRING + t[i + 1].start, t[i + 1].end - t[i + 1].start);
-            //printf("- Rodapé Estorno: %s\n", rett.rodapeEstorno);
-            i++;
-        } else {
-          //printf("Unexpected key: %.*s\n", t[i].end - t[i].start, JSON_STRING + t[i].start);
-        }
-    }
     return rett;
 }
 
@@ -453,7 +677,7 @@ void printReport(time_t time_ref)
     char buf[32];
     clock_t t1 = clock();
     time_t t = time(NULL);
-    sprintf(buf, "./reports/report%lu.txt", t);
+    sprintf(buf, "/reports/report%lu.txt", t);
     fp = fopen (buf,"w");
 
     /* write 10 lines of text into the file stream*/
@@ -461,4 +685,62 @@ void printReport(time_t time_ref)
             fprintf (fp, "%s\n",buf);
         }
     fclose (fp);
+}
+
+c_produto readLstProduto(const char *str, int i)
+{
+    FILE *fp;
+    char JSON_STRING[2048];
+    c_produto rett;
+
+    //Carregando configurações dos produtos financeiros (produto.json)
+    fp = fopen(str, "r");
+    fread(JSON_STRING, 2048, 1, fp);
+    fclose(fp);
+
+    jsmn_parser p;
+    jsmntok_t t[128];
+
+    jsmn_init(&p);
+    int r = jsmn_parse(&p, JSON_STRING, strlen(JSON_STRING), t, 128);
+
+    strncpy(&rett.nome, JSON_STRING + t[3+i].start, t[3+i].end - t[3+i].start);
+    //printf("- Nome: %s\n", rett.nome);
+    strncpy(&rett.id, JSON_STRING + t[6+i].start, t[6+i].end - t[6+i].start);
+    //printf("- ID: %s\n", rett.id);
+    //char sbuf[32];
+    //strncpy(sbuf, JSON_STRING + t[8+i].start, t[8+i].end - t[8+i].start);
+    //rett.tipo = strtol(sbuf,NULL,10);
+    //printf("- Tipo: %d\n", rett.tipo);
+    strncpy(&rett.rotulo, JSON_STRING + t[10+i].start, t[10+i].end - t[10+i].start);
+    //printf("- Rotulo: %s\n", rett.rotulo);
+    //memcpy(sbuf, 0, sizeof sbuf);
+    //strncpy(sbuf, JSON_STRING + t[12+i].start, t[12+i].end - t[12+i].start);
+    //rett.vMin = strtod(sbuf,NULL);
+    //printf("- vMin: %.2f\n", rett.vMin);
+    //memcpy(sbuf, 0, sizeof sbuf);
+    //strncpy(sbuf, JSON_STRING + t[14+i].start, t[14+i].end - t[14+i].start);
+    //rett.vMax = strtod(sbuf,NULL);
+    //printf("- vMax: %.2f\n", rett.vMax);
+
+    //return rett;
+}
+
+const char * formatMoney(const char * money)
+{
+    char buf[16];
+    if(strlen(money)==1)
+    {
+        sprintf(buf, "0,0%s",money);
+    }
+    else if(strlen(money)==2)
+    {
+        sprintf(buf, "0,%s",money);
+    }
+    else
+    {
+        sprintf(buf, "0,00",money);
+    }
+    //
+    return buf;
 }

@@ -278,3 +278,4 @@ TSWLatexianTemp*
 # Code::Blocks Project File
 *.cbp
 *.depend
+*.txt

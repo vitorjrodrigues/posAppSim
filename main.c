@@ -107,6 +107,7 @@ int main()
 BEGIN:
         werase(term);
 
+        /* Esvazia os buffers dos menus de Venda */
         memset(cartao, 0, sizeof cartao);
         memset(svalor_da_venda, 0, sizeof svalor_da_venda);
         memset(sparcelas, 0, sizeof sparcelas);
@@ -240,9 +241,6 @@ BEGIN:
 
                             if (q == 10)
                             {
-                                //wprintw(term, "%.2f %.2f",lstProduto[prod_id - 1].vMin,lstProduto[prod_id - 1].vMax);
-                                //wrefresh(term);
-                                //delay(2000);
                                 if(!(lstProduto[prod_id - 1].vMax == 0 || lstProduto[prod_id - 1].vMax == 0))
                                 {
                                     if(valor_da_venda/100 < lstProduto[prod_id - 1].vMin)
@@ -266,7 +264,7 @@ BEGIN:
                                         wrefresh(term);
                                         goto VENDA1;
                                     }
-
+                                    //TODO
                                     /*else if(valor_da_venda/100 > lstProduto[prod_id - 1].vMax)
                                     {
                                         wclrscr(term);
@@ -669,7 +667,7 @@ c_terminal readConfTerminal(const char *str)
     return rett;
 }
 
-void printReport(time_t time_ref)
+void printReport(time_t time_ref) //TODO
 {
     FILE * fp;
     int i;
@@ -680,14 +678,14 @@ void printReport(time_t time_ref)
     sprintf(buf, "/reports/report%lu.txt", t);
     fp = fopen (buf,"w");
 
-    /* write 10 lines of text into the file stream*/
+    /* write 10 lines of text into the file stream*/ //TODO
     for(i = 0; i < 10;i++){
             fprintf (fp, "%s\n",buf);
         }
     fclose (fp);
 }
 
-c_produto readLstProduto(const char *str, int i)
+c_produto readLstProduto(const char *str, int i) //TODO
 {
     FILE *fp;
     char JSON_STRING[2048];
@@ -726,10 +724,10 @@ c_produto readLstProduto(const char *str, int i)
     //return rett;
 }
 
-const char * formatMoney(const char * money)
+const char * formatMoney(const char * money) //TODO
 {
     char buf[16];
-    if(strlen(money)==1)
+    /*if(strlen(money)==1)
     {
         sprintf(buf, "0,0%s",money);
     }
@@ -740,7 +738,7 @@ const char * formatMoney(const char * money)
     else
     {
         sprintf(buf, "0,00",money);
-    }
+    }*/
     //
     return buf;
 }
